@@ -17,25 +17,26 @@ engine = create_engine(connection_string)
 # 1-ый запрос
 query1 = """
 WITH sellersales AS (
-    SELECT s.productkey, s.extendedamount::money
+    SELECT s.productkey, SUM(s.extendedamount::money) totalsellersales
     FROM factresellersales s
     WHERE s.orderdate BETWEEN '2010-10-01' AND '2010-12-31'
+    group by s.productkey
 ),
 internetsales AS (
-    SELECT s.productkey, s.extendedamount::money
+    SELECT s.productkey, SUM(s.extendedamount::money) totalinternetsales
     FROM factinternetsales s
     WHERE s.orderdate BETWEEN '2010-10-01' AND '2010-12-31'
+    group by s.productkey
 )
-SELECT 
-    s1.productkey,
-    SUM(s1.extendedamount) totalsellersales,
-    COALESCE(SUM(s2.extendedamount), 0::money) totalinternetsales,
-    SUM(s1.extendedamount) + COALESCE(SUM(s2.extendedamount), 0::money) totalextendedamount,
-    d.englishproductname
-FROM sellersales s1
+select
+s1.productkey,
+COALESCE(s1.totalsellersales, 0::money) totalsellersales,
+COALESCE(s2.totalinternetsales, 0::money) totalinternetsales,
+COALESCE(COALESCE(s1.totalsellersales, 0::money) + COALESCE(s2.totalinternetsales, 0::money), 0::money) totalextendedamount,
+d.englishproductname
+from sellersales s1
 LEFT JOIN internetsales s2 ON s1.productkey = s2.productkey
-LEFT JOIN dimproduct d ON d.productkey = s1.productkey
-GROUP BY s1.productkey, d.englishproductname;
+LEFT JOIN dimproduct d ON d.productkey = s1.productkey;
 """
 
 # 2-ой запрос
